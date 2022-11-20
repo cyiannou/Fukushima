@@ -1,0 +1,190 @@
+---
+title: "The Fukushima disaster"
+author: "Constantin T Yiannoutsos"
+date: "November 9, 2022"
+output: 
+  prettydoc::html_pretty:
+    theme: leonids
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Introduction
+In this vignette I discuss a well-known event, the Fukushima disaster. This event takes its name from the Fukushima Daiichi nuclear power plant in the Fukushima prefecture on the island of Honshu, Japan.  On 11 March 2011 and 05:46:24 UTC, a magnitude 9.1 earthquake occurred off the coast near the plant, creating a tsunami wave that resulted in a catastrophic reactor meltdown destroying the plant.  This disaster had ripple effects for Japan's entire nuclear power program as well as the broader Japanese economy.  
+
+As mentioned by Nate Silver, in his book _The Signal and the Noise: Why So Many Predictions Fail-but Some Don't_ (2012, Penguin Group), the Fukushima accident may have been caused by faulty construction based on erroneous assumptions about the likelihood of such a catastrophic event. The author's argument is related to the interpretation, or rather over-interpretation, of regression models. So, as I am teaching a regression course, my interest was piqued.  Before we discuss Mr. Silver's argument or anything about modeling and statistics, let's go back and review some fundamental ideas about earthquakes.
+
+## The Gutenberg-Richter law
+The Gutenberg-Richter law specifies the annual chance of an earthquake happening as a function of its magnitude.  The relationship connecting the frequency of an earthquake with its magnitude is 
+$$
+f=10^{a+bM}
+$$
+where $f$ is the frequency and $M$ is the magnitude (on the Richter scale) of the earthquake. Taking log-base-10 on both sides of the above equation we get
+$$
+\log_{10}(f)=a+bM
+$$
+In other words, the Gutenberg-Richter Law specifies that the log-base-10-transformed frequency of earthquakes is a linear function of their magnitude, up to unknown constants $a$ and $b$.  The coefficient $b$ or "b-value" is typically in the range of -1.1 to -0.8 (i.e., $b<0$), underlining the key assumption of the model that larger magnitude earthquakes are less frequent than earthquakes of smaller magnitude.
+
+The log-10 transformation implies that an earthquake that is one-unit stronger on the Richter scale, will have a chance of occurring that is $1/10\times b$ compared to an earthquake that is one-unit smaller.  If $b=-1$ and the frequency of an earthquake of size $M=5$ is, on average, once a year (i.e., $f_5=1$), then the likelihood of a magnitude-7 earthquake is
+$$
+\log\left (\frac{f_7}{f_5}\right )=\log(f_7)-\log(f_5)=a+(-1)(7)-a+(-1)(5)=-2
+$$
+
+Consequently, the frequency of an earthquake of magnitude 7 is
+$$f_7=10^{-2}=0.01$$
+or 1 in a hundred. So, if a magnitude-5 earthquake happens once a year, according to the Gutemberg-Richter model a magnitude-7 earthquake is expected to happen, on average, once in one hundred years.
+
+## Along comes Nate
+So along comes Nate Silver, showing the following figure in his book:
+
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+knitr::include_graphics('h:/teaching/indiana/pbhl b-285/lectures/unit 3 (Multiple regression)/lecture 5/online_class/lect17_g3b.png')
+```
+
+These data, appear to validate the Gutemberg-Richter model. In fact, running a simple linear regression of the earthquake frequencies on the log-10 scale, we can estimate the likelihood of observing an event like the Sendai earthquake (named after the closest region of Japan to the epicenter). We simply draw a vertical line up from the x axis at $M=9.1$ and then draw a horizontal line from the point the vertical line meets the regression line all the way to the y axis. This gives us the anticipated log-transformed frequency. Mr. Silver connects the dots and estimates that such an event has probability of occurring once in 300 years.  This is stunning! Particularly, since nuclear plants are built to be in service for decades. If a plant is built to last 60 years for example, it does not take heavy math to figure out that, according to Nate Silver's analysis, there is roughly one in five chances that it will suffer a catastrophic meltdown due to a similarly strong earthquake like the one that occurred in Sendai. (The exact answer is  $(1-1/300)^{60}=`r format(1-(1-1/300)^60, digits=3)`.)$  Such odds would have clearly been unacceptable.
+
+However, further observation of the raw data reveals the possibility of the existence of a "kink" around $M=7.6$, where earthquakes larger than this magnitude appear to follow a different, steeper, downward slope.  The question is whether this is a true feature of the state of nature or not.  Because, if this is true, and the b-value is smaller (more negative) above 7.6, corresponding to lower frequencies than expected among the largest-size earthquakes, then the probability of an earthquake the size of Fukushima may follow this trend:
+
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+knitr::include_graphics('h:/teaching/indiana/pbhl b-285/lectures/unit 3 (Multiple regression)/lecture 5/online_class/lect17_g3c.png')
+```
+
+According to Mr. Silver's commentary, the estimates produced by this alternative analysis (or over-analysis) of the data, result in an estimate of observing a magnitude $M=9.1$ earthquake of 1/13,000 years! This is a virtual impossibility.
+
+Suggesting that it was faulty analysis like this that, at least in part, was responsible for the Fukushima disaster, particularly as the book was published a mere year after the incident while cleanup was still going on and photographs of the area still appeared in the news, resulted in heavy criticism of its author from multiple quarters. 
+
+# The Fukushima disaster revisited
+As my students and I grapple with similar (albeit more innocuous) issues like how to use statistics to make sense of the world, I was intrigued by Nate Silver's argument. There it was; a situation where proper statistical analysis may have helped prevent one of the worse disasters in the history of mankind.  I needed to know whether Nate Silver or his detractors were right!  Given that I have statistics and data on my side, I thought I have a shot at disentangling the enigma.
+
+## USGS earthquake data
+As we are going to be discussing the Fukushima disaster in this vignette, I have downloaded all earthquakes which occurred in that same area. The earthquake that destroyed the Fukushima power plant on March 11, 2011, had its epicenter at coordinates 38.297$^{\circ}$ N, 142.373$^{\circ}$ E. I took a rectangle $\pm$ half a degree around the epicenter and searched for earthquakes in the 20th and 21st centuries in that area. I obtained these data from the US Geological Survey (https://www.USGS.gov). You can click on this [link](https://earthquake.usgs.gov/earthquakes/map/?currentFeatureId=official20110311054624120_30&extent=29.03696,124.32129&extent=45.44472,159.47754&range=search&sort=smallest&timeZone=utc&search=%7B%22name%22:%22Search%20Results%22,%22params%22:%7B%22starttime%22:%221900-01-01%2000:00:00%22,%22endtime%22:%222022-11-09%2023:59:59%22,%22maxlatitude%22:38.8,%22minlatitude%22:37.8,%22maxlongitude%22:142.9,%22minlongitude%22:141.9,%22minmagnitude%22:0,%22maxmagnitude%22:10,%22orderby%22:%22time%22%7D%7D) to be connected to the search parameters. The area of search is given in the following figure:
+
+```{r sendai, echo=FALSE, fig.align="center", fig.cap="<b>Figure 1.</b> Historic earthquake data around the Sendai earthquake epicenter (colored in blue).", out.width = '100%'}
+    knitr::include_graphics("sendai.png")
+
+```
+The first 6 lines from the historical earthquake data follow. Note that I have removed an earthquake of magnitude zero from the data.
+
+```{r, quake.data, message=FALSE, warning=FALSE}
+library(dplyr)
+library(flextable)
+quakes<-read.csv("japan_quakes_usgs_1Jan1900_9Nov2022.csv", 
+                 sep = ",", header = TRUE) %>%
+  filter(mag!=0)
+
+# List pretty table
+set_flextable_defaults(font.size=12)
+flextab=flextable(head(quakes))
+set_table_properties(flextab,
+                      
+                     opts_html = list(
+                       shadow=FALSE,
+                       scroll=list()
+                       )
+                     )
+
+```
+
+The data include `r dim(quakes)[1]` events ranging from `r min(quakes$mag) ` to `r max(quakes$mag)` on the Richter scale.  As we are, for the moment, only interested in the year and the frequency of the magnitude of the earthquakes, we subset the data as follows:
+
+```{r, freqs, message=FALSE}
+library(lubridate)
+
+yrs=with(quakes, as.numeric((max(date(time))-min(date(time)))/365.25))
+quake.freqs=quakes %>% 
+  count(mag) %>%
+  mutate(pct=n/yrs)
+
+flextable(head(quake.freqs))
+```
+Notice the code above 
+```{r, eval=FALSE}
+yrs<-as.numeric(max(date(ymd_hms(quakes$time)))-min(date(ymd_hms(quakes$time))))/365.25
+```
+This code takes the maximum date `r max(date(ymd_hms(quakes$time)))` of the database and subtracts the minimum (earliest) date `r min(date(ymd_hms(quakes$time)))` resulting in `r format(max(date(ymd_hms(quakes$time)))-min(date(ymd_hms(quakes$time))))` of data. To turn this into years, as required by the Gutenberg-Ricther model, we divide by 365.25 (the average number of days in a year). This gives us approximately `r format(as.numeric(max(date(ymd_hms(quakes$time)))-min(date(ymd_hms(quakes$time))))/365.25, digits = 3)` _years_ of data. Note also that you must change this to numeric, since the default output is of ```difftime``` class! 
+
+The log-10-transformed frequencies are plotted in the following figure. 
+```{r, quake.freqs, fig.align="center", fig.cap="<b>Figure 2</b>. Scatter plot of earthquakes by magnitude."}
+# USGS earthquake data
+library(plotrix)
+plot(quake.freqs$mag, log10(quake.freqs$pct), ylim = c(-3,.1), 
+     xlim = c(min(quake.freqs$mag), max(quake.freqs$mag)),
+     ylab = "Log-10 earthquake frequency", xlab = "Magnitude")
+arrows(8, -1.2, 9, -1.9 )
+draw.ellipse(3.8, -1, a = .4, b = 1, angle = 160, lwd=3, border = 'red')
+```
+In the above figure we see the 9.1 Sendai earthquake (arrow). We also notice an number of earthquakes of smaller magnitude which, paradoxically, have lower than expected frequency.  This phenomenon may be due to under-reporting of small earthquakes.
+
+## Exploratory data analysis
+To fit the Gutenberg-Richter model we will have to discard the section of the frequency spectrum which is not consistent with the linear trend implied in the Gutenberg-Richter model. This is an arbitrary decision on my part, because I am fairly convinced that this is an artifact caused by under-reporting of smaller-magnitude earthquakes and not a feature of the data; maybe I am wrong. In any case, doing this by eye will produce potentially biased estimates of $b$, so I choose several options for the cutoff and see what happens. We will also remove from the data set the Sendai earthquake, as this is the earthquake whose probability we are trying to estimate. In addition, the magnitude of this earthquake is so large, that the estimates will inevitably be sensitive to whether this point is in the data set or not, so it must be removed before proceeding.
+
+I will create a function which will remove all earthquakes below a threshold and produce the estimates of $b$.  Here it goes:
+
+```{r, b-value-function}
+bvalue<-function(minmag, data){
+  subdata<-subset(data, mag>minmag)
+  lm.fit<-lm(log10(pct)~mag, data = subdata)
+  return(lm.fit)
+}
+```
+Let's see what difference it makes on the estimation of $b$ to change the minimum value of the magnitudes entering in the estimation. We will start with a threshold of $M=3.5$ (i.e., removing no earthquakes, as $M=3.5$ is the lowest magnitude in the data) and going up to $M=5$:
+
+```{r, fourandabove, fig.align="center", fig.cap="<b>Figure 3.</b> Various estimates of earthquake risk"}
+subdata<-rbind(subset(quake.freqs, mag <9), data.frame(mag = 9.1, n = NA, pct = NA))
+plot(log10(pct)~mag, quake.freqs[quake.freqs$mag<9.1,], 
+     ylim = c(-3,1), xlim = c(min(quake.freqs$mag),
+                              max(quake.freqs$mag)),
+     ylab = "Log-10 earthquake frequency", xlab = "Magnitude")
+points(log10(pct)~mag, data=quake.freqs[quake.freqs$mag>9,], 
+       pch=16, col='red')
+colorcount=2
+for(i in seq(3.5, 5, by = 0.5)){
+lines(subdata$mag, predict(bvalue(i, subdata), newdata = subdata), 
+      lwd = 1, col = colorcount, lty = colorcount)
+  colorcount=colorcount+1
+}
+legend(7.75,1, paste("cutoff=", seq(3.5,5,.5)), lty = 2:5, col = 2:5)
+```
+It is not straightfoward to choose among these lines. As a criterion of the optimal threshold in some sense, I plot the r-squared values resulting from these models. These are given in the following figure:
+```{r, rsquared, fig.align="center", fig.cap="<b>Figure 4.</b> R-square values by earthquake magnitude cutoff"}
+rsq<-NULL
+bvalue.list<-lapply(seq(3.5,5,0.05), bvalue, quake.freqs)
+for(i in 1:length(seq(3.5,5,.05))){
+   rsq[i]<-summary(bvalue.list[[i]])$r.squared  
+}
+
+plot(seq(3.5,5,.05), predict(loess(rsq~seq(3.5,5,.05), span = .6)), type = "l", ylim = c(0, 0.8), col='red', lwd=2,
+     ylab = "R-squared values", xlab = "Minimum earthquake magnitude cutoff")
+points(seq(3.5,5,.05), rsq)
+```
+
+The conclusion is that the best cutoff in these data is magnitude $M=`r format(unique(quakes$mag[which(rsq==max(rsq))]),digits=3)`$. This is because if we exclude earthquakes below that threshold from the analysis results in the maximum R-squared value. 
+
+## Regression analysis
+
+Carrying out this model, we can predict the data estimate for the likelihood of the 9.1 magnitude Fukushima earthquake.  
+```{r }
+opthreshold=unique(quakes$mag[which(rsq==max(rsq))])
+fukureg=lm(log10(pct)~mag, 
+           data=subset(quake.freqs, 
+                       mag>=opthreshold & mag<9))
+p.fukushima<-predict(fukureg, newdata = data.frame(mag=9.1))
+```
+The estimates for $a$ and $b$ from this model are, respectively, $\hat a=`r format(summary(fukureg)$coefficients[1,1], digits=3)`$ and $\hat b=`r format(summary(fukureg)$coefficients[2,1], digits=3)`$. This produces the estimate of the frequency (and thus the probability) of the occurrence of a Fukushima-type event as
+$$
+\widehat{\log_{10}(f)}=\hat a+\hat b(9.1)=`r format(summary(fukureg)$coefficients[1,1], digits=3)` `r format(summary(fukureg)$coefficients[2,1], digits=3)`(9.1)=`r format(p.fukushima, digits=3)`
+$$
+
+In other words, the probability that an earthquake like the Fukushima one would occur is $f=10^{`r format(p.fukushima, digits = 3)`}=`r format(10^p.fukushima, digits = 2)`$ or once in `r format(10^-p.fukushima, digits=3)` years.  
+
+# Conclusion
+
+You might think that this is a small probability. Let's look at it another way. If a plant has a 60-year lifespan and each year the probability of a 9.1 earthquake is P= `r format(10^p.fukushima, digits = 2)`, the probability of having no accidents of this magnitude over the 60-year lifespan of the plant is 
+$$
+P(k=0)=1-(1-`r format(10^p.fukushima, digits=2)`)^{60}=`r format(1-(1-10^p.fukushima)^60, digits=3)`
+$$
+This is not an inconceivable event. The probability of this event becomes larger if one considers that Japan has multiple nuclear plants. However, this probability will not be a simple product of our estimate times the number of plants, since these locations are not independent from one another due to geographical proximity and location over the same tectonic plate, etc. 
+
+My estimate is very far from Nate Silver's. The probability I am coming up with is about 1/9 of his. Nevertheless, it is still about 5 times the probability that would be estimated if the lower frequency were to be considered (assuming his data are correct). It is a non-statistical question whether a probability like the one considered here, would have resulted, had it been considered, in a change of the parameters of the Fukushima power plant.
